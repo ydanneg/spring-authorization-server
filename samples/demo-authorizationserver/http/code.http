@@ -1,0 +1,49 @@
+### Log out
+# @no-redirect
+POST {{baseUrl}}/logout
+
+### Authorize
+# @no-redirect
+GET {{baseUrl}}{{authorizePath}}?response_type=code&client_id={{clientId}}&redirect_uri={{redirectUri}}&scope=openid
+
+> {%
+    const location = response.headers.valueOf("Location");
+    client.global.set("location", decodeURI(location));
+%}
+
+#### Login
+# @no-redirect
+POST {{location}}
+Content-Type: application/x-www-form-urlencoded
+
+username={{username}}&password={{password}}
+
+> {%
+    let location = response.headers.valueOf("Location");
+    client.log("location:" + location)
+    client.log("decoded location:" + decodeURI(location))
+    client.global.set("location", decodeURI(location));
+%}
+
+#### Follow redirect from login
+# @no-redirect
+GET {{location}}
+
+> {%
+    const location = response.headers.valueOf("Location")
+    const code = new RegExp( '[?&]code=([^&#]*)', 'i' ).exec(decodeURI(location))[1]
+    client.global.set("code", code);
+%}
+
+#### Request token with code
+# @no-redirect
+POST {{baseUrl}}{{tokenPath}} HTTP/1.1
+Authorization: Basic {{clientId}} {{clientSecret}}
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=authorization_code&code={{code}}&client_id={{clientId}}&redirect_uri={{redirectUri}}
+
+> {%
+    const body = response.body
+    client.log("body:" + JSON.stringify(body))
+%}

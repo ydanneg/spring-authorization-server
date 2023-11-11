@@ -15,17 +15,14 @@
  */
 package sample.config;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 import java.util.UUID;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import sample.authentication.DeviceClientAuthenticationProvider;
-import sample.federation.FederatedIdentityIdTokenCustomizer;
-import sample.jose.Jwks;
-import sample.web.authentication.DeviceClientAuthenticationConverter;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -57,6 +54,10 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import sample.authentication.DeviceClientAuthenticationProvider;
+import sample.federation.FederatedIdentityIdTokenCustomizer;
+import sample.jose.Jwks;
+import sample.web.authentication.DeviceClientAuthenticationConverter;
 
 /**
  * @author Joe Grandja
@@ -66,6 +67,7 @@ import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
  */
 @Configuration(proxyBeanMethods = false)
 public class AuthorizationServerConfig {
+
 	private static final String CUSTOM_CONSENT_PAGE_URI = "/oauth2/consent";
 
 	@Bean
@@ -113,7 +115,15 @@ public class AuthorizationServerConfig {
 			)
 			.authorizationEndpoint(authorizationEndpoint ->
 				authorizationEndpoint.consentPage(CUSTOM_CONSENT_PAGE_URI))
-			.oidc(Customizer.withDefaults());	// Enable OpenID Connect 1.0
+			.oidc(customizer -> customizer.
+					providerConfigurationEndpoint(c -> c
+							.providerConfigurationCustomizer(v -> v
+									.scope("profile")
+									.scope("message.read")
+									.scope("message.write")
+							)
+					)
+			);	// Enable OpenID Connect 1.0
 		// @formatter:on
 
 		// @formatter:off
@@ -126,6 +136,8 @@ public class AuthorizationServerConfig {
 			)
 			.oauth2ResourceServer(oauth2ResourceServer ->
 				oauth2ResourceServer.jwt(Customizer.withDefaults()));
+
+		http.cors(withDefaults());
 		// @formatter:on
 		return http.build();
 	}
@@ -136,12 +148,16 @@ public class AuthorizationServerConfig {
 		RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
 				.clientId("messaging-client")
 				.clientSecret("{noop}secret")
+															//https://script.google.com/macros/d/1UrLyWZvUCxElRsRK8fbPZiu7cQcV3jk9CcRUsoKhRNzYmedHHGvDrFg3/usercallback,https://script.google.com/a/macros/agrello.org/d/1UrLyWZvUCxElRsRK8fbPZiu7cQcV3jk9CcRUsoKhRNzYmedHHGvDrFg3/usercallback,https://test-api.test-agrello.com/web-api/webjars/swagger-ui/oauth2-redirect.html,https://test-api.test-agrello.com/public-api/webjars/springfox-swagger-ui/oauth2-redirect.html,https://api.test-agrello.com/public/webjars/swagger-ui/oauth2-redirect.html,https://api.test-agrello.com:443/public/webjars/swagger-ui/oauth2-redirect.html,http://localhost:8084/webjars/springfox-swagger-ui/oauth2-redirect.html,http://localhost:8084/swagger-ui/oauth2-redirect.html,http://localhost:8085/webjars/swagger-ui/oauth2-redirect.html,http://localhost:8888/swagger-ui/oauth2-redirect.html,http://localhost:8081/webjars/swagger-ui/oauth2-redirect.html,https://zapier.com/dashboard/auth/oauth/return/App148187CLIAPI/,https://zapier.com/dashboard/auth/oauth/return/App148409CLIAPI/,http://localhost:8080/webjars/swagger-ui/oauth2-redirect.html,https://zapier.com/dashboard/auth/oauth/return/AgrelloCLIAPI/,http://localhost:8081/oauth2-redirect.html,http://localhost:8080/public/webjars/swagger-ui/oauth2-redirect.html,https://test-api.test-agrello.com/public-api/swagger-ui/oauth2-redirect.html
 				.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+				.clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
 				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+				.authorizationGrantType(AuthorizationGrantType.DEVICE_CODE)
 				.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
 				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
 				.redirectUri("http://127.0.0.1:8080/login/oauth2/code/messaging-client-oidc")
 				.redirectUri("http://127.0.0.1:8080/authorized")
+				.redirectUri("http://localhost:8086/webjars/swagger-ui/oauth2-redirect.html")
 				.postLogoutRedirectUri("http://127.0.0.1:8080/logged-out")
 				.scope(OidcScopes.OPENID)
 				.scope(OidcScopes.PROFILE)

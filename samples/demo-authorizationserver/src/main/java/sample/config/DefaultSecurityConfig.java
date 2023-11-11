@@ -15,12 +15,15 @@
  */
 package sample.config;
 
-import sample.federation.FederatedIdentityAuthenticationSuccessHandler;
+import static org.springframework.security.config.Customizer.withDefaults;
+
+import java.util.Collections;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.core.userdetails.User;
@@ -30,6 +33,10 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import sample.federation.FederatedIdentityAuthenticationSuccessHandler;
 
 /**
  * @author Joe Grandja
@@ -39,6 +46,21 @@ import org.springframework.security.web.session.HttpSessionEventPublisher;
 @EnableWebSecurity
 @Configuration(proxyBeanMethods = false)
 public class DefaultSecurityConfig {
+
+
+	@Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
+		CorsConfiguration corsConfiguration = new CorsConfiguration();
+		corsConfiguration.applyPermitDefaultValues();
+		corsConfiguration.setAllowedOrigins(Collections.singletonList("*"));
+		corsConfiguration.setAllowedMethods(Collections.singletonList("*"));
+		corsConfiguration.setAllowedHeaders(Collections.singletonList("*"));
+		corsConfiguration.setExposedHeaders(Collections.singletonList("*"));
+		corsConfiguration.setMaxAge(3600L);
+		urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
+		return urlBasedCorsConfigurationSource;
+	}
 
 	// @formatter:off
 	@Bean
@@ -57,7 +79,9 @@ public class DefaultSecurityConfig {
 				oauth2Login
 					.loginPage("/login")
 					.successHandler(authenticationSuccessHandler())
-			);
+			)
+			.csrf(AbstractHttpConfigurer::disable)
+			.cors(withDefaults());
 
 		return http.build();
 	}
